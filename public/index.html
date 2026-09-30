@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Konversi Invoice ke Excel</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="hero">
+      <p class="eyebrow">Tigalapan Indonesia</p>
+      <h1>Konversi Invoice ke Excel</h1>
+      <p class="sub">Upload PDF invoice bahan (berupa gambar), lalu unduh hasilnya dalam template BERAT RATA-RATA.</p>
+    </header>
+
+    <section class="grid" aria-label="Langkah">
+      <label class="card card--drop" id="drop" tabindex="0">
+        <input type="file" id="file" accept="application/pdf,.pdf" multiple hidden>
+        <div class="tile" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+        </div>
+        <h2>Upload Invoice PDF</h2>
+        <p>Klik atau tarik file PDF ke sini. Boleh lebih dari satu invoice.</p>
+      </label>
+
+      <div class="card" id="statusCard">
+        <div class="tile" id="statusTile">
+          <svg id="statusIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 9h8M8 12h8M8 15h5"/></svg>
+          <div class="bar" id="bar" hidden><span id="barFill"></span></div>
+        </div>
+        <h2>Baca &amp; Periksa</h2>
+        <p id="statusText">Menunggu file. Teks dibaca dengan OCR lalu dicek silang dengan total di invoice.</p>
+      </div>
+
+      <div class="card" id="exportCard">
+        <div class="tile" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13l4 4m0-4l-4 4"/></svg>
+        </div>
+        <h2>Export ke Excel</h2>
+        <p>Mengikuti template, lengkap dengan rumus.</p>
+        <label class="field field--inline">
+          <span>Judul sheet</span>
+          <input type="text" id="title" placeholder="DATA BAHAN BERDASARKAN FAKTUR W..">
+        </label>
+        <button class="btn" id="download" disabled>Download Excel</button>
+      </div>
+    </section>
+
+    <div id="results"></div>
+
+    <details class="card card--wide" id="mapping">
+      <summary>Pemetaan kolom: dari PDF ke Excel</summary>
+      <table class="map">
+        <thead><tr><th>Kolom</th><th>Header</th><th>Sumber di invoice PDF</th><th>Isi di Excel</th></tr></thead>
+        <tbody>
+          <tr><td>A</td><td>TANGGAL INVOICE</td><td>“Tanggal” di kepala invoice</td><td>Tanggal (dd/mm/yyyy), baris pertama tiap warna</td></tr>
+          <tr class="blank"><td>B</td><td>TUJUAN</td><td>Tidak ada di invoice</td><td><em>Dikosongkan</em></td></tr>
+          <tr><td>C</td><td>WARNA</td><td>Judul barang, bagian setelah “-” (COMBED 24S - <b>TOSCA MUDA</b>)</td><td>Nama warna</td></tr>
+          <tr><td>D</td><td>BENANG</td><td>Judul barang (COMBED <b>24S</b> - …)</td><td>24S, 30S, dst.</td></tr>
+          <tr><td>E</td><td>ROLL</td><td>Jumlah baris berat “… KG” di bawah judul warna</td><td>Angka</td></tr>
+          <tr><td>F</td><td>BERAT ()/ROLL</td><td>Berat tiap baris (24.87 KG)</td><td>Satu baris Excel per roll</td></tr>
+          <tr><td>G</td><td>BERAT TOTAL</td><td>—</td><td><code>=SUM(F…)</code> per warna</td></tr>
+          <tr><td>H</td><td>BERAT RATA2</td><td>—</td><td><code>=AVERAGE(F…)</code> per warna</td></tr>
+          <tr><td>I</td><td>RIB ()</td><td>Berat baris “RIB COMBED 24S - warna” (bila lebih dari satu, dijumlahkan: <code>=12+2.6</code>)</td><td>Angka kg</td></tr>
+          <tr><td>J</td><td>HARGA RIB</td><td>Harga/kg baris RIB</td><td><code>=I×harga rib</code></td></tr>
+          <tr><td>K</td><td>HARGA/ROLL</td><td>Harga/kg baris roll</td><td><code>=F×harga roll</code> tiap baris</td></tr>
+          <tr><td>L</td><td>HARGA/WARNA</td><td>—</td><td><code>=SUM(J:K)</code> per warna</td></tr>
+          <tr><td>M</td><td>DISKON</td><td>“Total Diskon” ÷ total kg (roll + rib)</td><td><code>=SUM(G,I seluruh order)×diskon per kg</code>, baris pertama order</td></tr>
+          <tr><td>N</td><td>HARGA TOTAL</td><td>“Total Bayar”</td><td><code>=SUM(L order)−M</code>, baris pertama order</td></tr>
+          <tr class="blank"><td>O</td><td>NO INVOICE</td><td>Tidak ada di invoice</td><td><em>Dikosongkan</em></td></tr>
+          <tr><td>P</td><td>NO ORDER</td><td>“No Penjualan” (OH300726111)</td><td>Teks, baris pertama tiap warna</td></tr>
+        </tbody>
+      </table>
+    </details>
+  </main>
+
+  <script src="vendor/tesseract/tesseract.min.js"></script>
+  <script src="vendor/exceljs.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

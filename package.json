@@ -1,0 +1,18 @@
+{
+  "name": "invoice-to-excel",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Konversi invoice PDF (gambar) ke template Excel BERAT RATA-RATA",
+  "scripts": {
+    "start": "node server.js",
+    "vendor": "node scripts/vendor.js",
+    "test": "node test/run.js"
+  },
+  "dependencies": {
+    "@tesseract.js-data/eng": "^1.0.0",
+    "exceljs": "^4.4.0",
+    "pdfjs-dist": "^6.3.289",
+    "tesseract.js": "^7.0.0"
+  }
+}
