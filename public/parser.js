@@ -28,7 +28,21 @@ const lastNumber = (line) => {
   return m ? parseMoney(m[1]) : NaN;
 };
 
-export const normColor = (s) => String(s).toUpperCase().replace(/\s+/g, ' ').trim();
+/**
+ * "OH300726111.YOGI01.MANUAL.pdf" -> {noPenjualan:'OH300726111', tujuan:'YOGI01', kodeTransfer:'MANUAL'}.
+ * Nama file yang bukan format ini (bagian pertama bukan No Penjualan) dibiarkan kosong, bukan ditebak.
+ */
+export function parseFileName(name) {
+  const base = String(name || '').replace(/^.*[\\/]/, '').replace(/\.pdf$/i, '')
+    .replace(/(\s*-\s*copy)?(\s*\(\d+\))?\s*$/i, '') // akhiran salinan dari Windows/browser: " - Copy", " (1)"
+    .trim();
+  const [no = '', tujuan = '', ...rest] = base.split('.');
+  const noPenjualan = no.trim().toUpperCase();
+  if (!/^[A-Z]{2}\d{6,}$/.test(noPenjualan)) return { noPenjualan: '', tujuan: '', kodeTransfer: '' };
+  return { noPenjualan, tujuan: tujuan.trim().toUpperCase(), kodeTransfer: rest.join('.').trim().toUpperCase() };
+}
+
+export const normColor =(s) => String(s).toUpperCase().replace(/\s+/g, ' ').trim();
 
 export function parseDate(text) {
   const m = text.match(/Tanggal\s*[:;]?\s*(\d{2})\s*[-/.]\s*(\d{2})\s*[-/.]\s*(\d{4})/i);
@@ -56,6 +70,15 @@ export function parseInvoiceText(text, fileName = '') {
 
   const mNo = text.match(/No\s*Penjualan\s*[:;]?\s*([A-Z0-9]{8,})/i);
   if (mNo) inv.noPenjualan = mNo[1].toUpperCase().replace(/^0H/, 'OH');
+
+  // Nama file NOPENJUALAN.TUJUAN.KODETRANSFER.pdf -> kolom TUJUAN (B) dan NO INVOICE (O)
+  const fn = parseFileName(fileName);
+  inv.tujuan = fn.tujuan;
+  inv.kodeTransfer = fn.kodeTransfer;
+  if (!inv.noPenjualan) inv.noPenjualan = fn.noPenjualan;
+  else if (fn.noPenjualan && fn.noPenjualan !== inv.noPenjualan) {
+    inv.warnings.push(`No Penjualan di nama file (${fn.noPenjualan}) berbeda dengan yang terbaca di invoice (${inv.noPenjualan}) — cek.`);
+  }
 
   let i = 0;
   let current = null; // group yang sedang dibaca

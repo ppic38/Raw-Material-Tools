@@ -1,6 +1,6 @@
 import * as pdfjsLib from './vendor/pdfjs/pdf.min.mjs';
-import { parseInvoiceText, validate, parseMoney, parseWeight, lineOk, fmt, deriveDiskonPerKg } from './parser.js';
-import { buildWorkbook, layoutRows, HEADERS, COLS } from './excel.js';
+import { parseInvoiceText, validate, parseMoney, parseWeight, lineOk, fmt, deriveDiskonPerKg, round2 } from './parser.js';
+import { buildWorkbook, layoutRows, columnTotals, HEADERS, COLS } from './excel.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.min.mjs', import.meta.url).href;
 
@@ -118,8 +118,31 @@ const isoWeek = (t) => {
 const dateValue = (t) => (t ? `${t.y}-${String(t.m).padStart(2, '0')}-${String(t.d).padStart(2, '0')}` : '');
 
 function render() {
-  $('#results').innerHTML = state.invoices.map(invCard).join('');
+  $('#results').innerHTML = (state.invoices.length > 1 ? '<section class="card summary" id="summary"></section>' : '')
+    + state.invoices.map(invCard).join('');
   state.invoices.forEach((_, i) => refresh(i));
+  updateSummary();
+}
+
+/** Pemeriksaan per invoice + deteksi invoice ganda (No Penjualan sama di beberapa file). */
+function checksFor(i) {
+  const inv = state.invoices[i];
+  const checks = validate(inv);
+  if (inv.noPenjualan && state.invoices.some((v, j) => j !== i && v.noPenjualan === inv.noPenjualan)) {
+    checks.push({ ok: false, label: 'Invoice ganda', detail: `No Penjualan ${inv.noPenjualan} muncul lebih dari sekali — hapus salah satu` });
+  }
+  return checks;
+}
+const problemCount = () => state.invoices.reduce((a, _, i) => a + checksFor(i).filter((c) => !c.ok).length, 0);
+
+function updateSummary() {
+  const el = $('#summary');
+  if (!el) return;
+  const t = columnTotals(layoutRows(state.invoices));
+  el.innerHTML = `<strong>${state.invoices.length} invoice akan digabung dalam satu Excel</strong>
+    <span>${fmt(t.E)} roll · ${fmt(round2(t.G))} kg roll · ${fmt(round2(t.I))} kg rib</span>
+    <span>Total harga: <b>Rp ${fmt(Math.round(t.N))}</b></span>
+    <button class="btn btn--ghost" data-act="clear-all">Hapus semua</button>`;
 }
 
 function invCard(inv, i) {
@@ -151,6 +174,8 @@ function invCard(inv, i) {
     <div class="inv-fields">
       <label class="field"><span>No Order (kolom P)</span><input type="text" data-inv="${i}" data-f="noPenjualan" value="${esc(inv.noPenjualan)}"></label>
       <label class="field"><span>Tanggal invoice (kolom A)</span><input type="date" data-inv="${i}" data-f="tanggal" value="${dateValue(inv.tanggal)}"></label>
+      <label class="field"><span>Tujuan (kolom B)</span><input type="text" data-inv="${i}" data-f="tujuan" value="${esc(inv.tujuan)}" placeholder="dari nama file"></label>
+      <label class="field"><span>Kode transfer (kolom O)</span><input type="text" data-inv="${i}" data-f="kodeTransfer" value="${esc(inv.kodeTransfer)}" placeholder="dari nama file"></label>
       <label class="field"><span>Diskon per kg (Rp)</span><input type="text" data-inv="${i}" data-f="diskonPerKg" value="${esc(inv.diskonPerKg)}" inputmode="decimal"></label>
       <div class="field"><span>Total Bayar di invoice</span><div class="ro">${Number.isFinite(inv.totals.totalBayar) ? 'Rp ' + fmt(inv.totals.totalBayar) : '—'}</div></div>
     </div>
@@ -169,7 +194,7 @@ function refresh(i) {
   const card = document.querySelector(`[data-card="${i}"]`);
   if (!inv || !card) return;
 
-  card.querySelector('[data-role="checks"]').innerHTML = validate(inv)
+  card.querySelector('[data-role="checks"]').innerHTML = checksFor(i)
     .map((c) => `<span class="chip ${c.ok ? '' : 'bad'}">${c.ok ? '✓' : '⚠'} ${esc(c.label)}${c.detail ? `<small>${esc(c.detail)}</small>` : ''}</span>`).join('');
 
   card.querySelectorAll('tr[data-l]').forEach((tr) => {
@@ -182,6 +207,7 @@ function refresh(i) {
   });
 
   card.querySelector('[data-role="preview"]').innerHTML = previewTable(inv);
+  updateSummary();
 }
 
 const rp = (n) => 'Rp ' + n.toLocaleString('id-ID', { maximumFractionDigits: 2 });
@@ -198,7 +224,7 @@ function previewTable(inv) {
     return v.toLocaleString('id-ID', { maximumFractionDigits: 3 });
   };
   const body = rows.map(({ first, cells }) => `<tr class="${first ? 'first' : ''}">${COLS.map((col) => {
-    const blank = (col === 'B' || col === 'O') && first;
+    const blank = (col === 'B' || col === 'O') && first && !cells[col];
     const l = col === 'C' ? ' l' : '';
     return `<td class="${blank ? 'blank' : ''}${l}">${cellText(col, cells[col])}</td>`;
   }).join('')}</tr>`).join('');
@@ -214,6 +240,8 @@ $('#results').addEventListener('input', (e) => {
   const i = +(el.dataset.inv ?? tr?.dataset.inv ?? el.closest('[data-card]').dataset.card);
   const inv = state.invoices[i];
   if (f === 'noPenjualan') inv.noPenjualan = el.value.trim().toUpperCase();
+  else if (f === 'tujuan') inv.tujuan = el.value.trim().toUpperCase();
+  else if (f === 'kodeTransfer') inv.kodeTransfer = el.value.trim().toUpperCase();
   else if (f === 'tanggal') {
     const m = el.value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     inv.tanggal = m ? { y: +m[1], m: +m[2], d: +m[3] } : null;
@@ -227,6 +255,7 @@ $('#results').addEventListener('input', (e) => {
     delete l.fixed;
   }
   refresh(i);
+  if (f === 'noPenjualan') state.invoices.forEach((_, j) => { if (j !== i) refresh(j); }); // peringatan ganda ikut diperbarui
   afterChange();
 });
 
@@ -236,7 +265,10 @@ $('#results').addEventListener('click', (e) => {
   const tr = b.closest('tr');
   const i = +(b.dataset.inv ?? tr?.dataset.inv);
   const inv = state.invoices[i];
-  if (b.dataset.act === 'del-inv') state.invoices.splice(i, 1);
+  if (b.dataset.act === 'clear-all') {
+    if (!confirm(`Hapus semua ${state.invoices.length} invoice dari daftar?`)) return;
+    state.invoices = [];
+  } else if (b.dataset.act === 'del-inv') state.invoices.splice(i, 1);
   else if (b.dataset.act === 'add-line') {
     const g = inv.groups[+b.dataset.g];
     const last = g.lines[g.lines.length - 1];
@@ -257,7 +289,7 @@ function afterChange() {
   const n = state.invoices.length;
   $('#download').disabled = n === 0;
   if (!n) { setStatus('', 'Menunggu file. Teks dibaca dengan OCR lalu dicek silang dengan total di invoice.'); return; }
-  const bad = state.invoices.reduce((a, inv) => a + validate(inv).filter((c) => !c.ok).length, 0);
+  const bad = problemCount();
   setStatus(bad ? 'warn' : 'ok', bad
     ? `${n} invoice terbaca, ${bad} pemeriksaan perlu dicek (lihat tanda ⚠ di bawah).`
     : `${n} invoice terbaca dan semua pemeriksaan silang cocok dengan total di invoice.`);
@@ -268,7 +300,7 @@ function afterChange() {
 $('#title').addEventListener('input', () => { state.titleEdited = true; });
 
 $('#download').addEventListener('click', async () => {
-  const bad = state.invoices.reduce((a, inv) => a + validate(inv).filter((c) => !c.ok).length, 0);
+  const bad = problemCount();
   if (bad && !confirm(`Masih ada ${bad} pemeriksaan yang belum cocok. Tetap download?`)) return;
   const btn = $('#download');
   btn.disabled = true;

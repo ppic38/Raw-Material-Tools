@@ -55,7 +55,9 @@ export function layoutRows(invoices, startRow = FIRST_ROW) {
               : { f: b.ribs.map((l) => `${l.w}*${l.price}`).join('+'), r: ribCost };
           }
           cells.L = { f: `SUM(J${s}:K${e})`, r: calc.L };
-          cells.O = null; // NO INVOICE: sengaja kosong
+          // TUJUAN (B) dan NO INVOICE (O) tidak ada di isi invoice; diambil dari nama file, kosong bila tidak ada
+          if (inv.tujuan) cells.B = { v: inv.tujuan };
+          if (inv.kodeTransfer) cells.O = { v: /^\d+$/.test(inv.kodeTransfer) ? Number(inv.kodeTransfer) : inv.kodeTransfer };
           cells.P = { v: inv.noPenjualan };
         }
         if (roll) {

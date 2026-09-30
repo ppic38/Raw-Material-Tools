@@ -23,6 +23,7 @@
         </div>
         <h2>Upload Invoice PDF</h2>
         <p>Atau klik untuk memilih file. Boleh lebih dari satu invoice.</p>
+        <p class="naming">Nama file: <code>NOPENJUALAN.TUJUAN.KODETRANSFER.pdf</code><br>mis. OH300726111.YOGI01.MANUAL.pdf</p>
       </label>
 
       <div class="card" id="statusCard">
@@ -56,7 +57,7 @@
         <thead><tr><th>Kolom</th><th>Header</th><th>Sumber di invoice PDF</th><th>Isi di Excel</th></tr></thead>
         <tbody>
           <tr><td>A</td><td>TANGGAL INVOICE</td><td>“Tanggal” di kepala invoice</td><td>Tanggal (dd/mm/yyyy), baris pertama tiap warna</td></tr>
-          <tr class="blank"><td>B</td><td>TUJUAN</td><td>Tidak ada di invoice</td><td><em>Dikosongkan</em></td></tr>
+          <tr><td>B</td><td>TUJUAN</td><td>Tidak ada di isi invoice; dari <b>nama file</b> bagian ke-2 (OH300726111.<b>YOGI01</b>.MANUAL)</td><td>Teks; kosong bila nama file tidak sesuai format</td></tr>
           <tr><td>C</td><td>WARNA</td><td>Judul barang, bagian setelah “-” (COMBED 24S - <b>TOSCA MUDA</b>)</td><td>Nama warna</td></tr>
           <tr><td>D</td><td>BENANG</td><td>Judul barang (COMBED <b>24S</b> - …)</td><td>24S, 30S, dst.</td></tr>
           <tr><td>E</td><td>ROLL</td><td>Jumlah baris berat “… KG” di bawah judul warna</td><td>Angka</td></tr>
@@ -69,7 +70,7 @@
           <tr><td>L</td><td>HARGA/WARNA</td><td>—</td><td><code>=SUM(J:K)</code> per warna</td></tr>
           <tr><td>M</td><td>DISKON</td><td>“Total Diskon” ÷ total kg (roll + rib)</td><td><code>=SUM(G,I seluruh order)×diskon per kg</code>, baris pertama order</td></tr>
           <tr><td>N</td><td>HARGA TOTAL</td><td>“Total Bayar”</td><td><code>=SUM(L order)−M</code>, baris pertama order</td></tr>
-          <tr class="blank"><td>O</td><td>NO INVOICE</td><td>Tidak ada di invoice</td><td><em>Dikosongkan</em></td></tr>
+          <tr><td>O</td><td>NO INVOICE</td><td>Tidak ada di isi invoice; dari <b>nama file</b> bagian ke-3 / kode transfer (OH300726111.YOGI01.<b>MANUAL</b>)</td><td>Teks (atau angka bila kodenya angka); kosong bila tidak ada</td></tr>
           <tr><td>P</td><td>NO ORDER</td><td>“No Penjualan” (OH300726111)</td><td>Teks, baris pertama tiap warna</td></tr>
         </tbody>
       </table>
