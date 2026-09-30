@@ -296,10 +296,34 @@ $('#download').addEventListener('click', async () => {
 
 /* ---------------- upload ---------------- */
 const drop = $('#drop');
+const overlay = $('#dropOverlay');
 $('#file').addEventListener('change', (e) => handleFiles(e.target.files));
 drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#file').click(); } });
-['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
-['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
-drop.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
-window.addEventListener('dragover', (e) => e.preventDefault());
-window.addEventListener('drop', (e) => { e.preventDefault(); if (!drop.contains(e.target)) handleFiles(e.dataTransfer.files); });
+
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
+}
+
+// Seluruh halaman jadi area drop. Penghitung dipakai karena dragenter/dragleave ikut menyala untuk elemen anak.
+const hasFiles = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+let depth = 0;
+const setOver = (on) => { overlay.hidden = !on; drop.classList.toggle('over', on); };
+window.addEventListener('dragenter', (e) => { if (!hasFiles(e)) return; e.preventDefault(); depth++; setOver(true); });
+window.addEventListener('dragover', (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+window.addEventListener('dragleave', (e) => { if (!hasFiles(e)) return; depth = Math.max(0, depth - 1); if (!depth) setOver(false); });
+window.addEventListener('drop', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  depth = 0;
+  setOver(false);
+  const files = [...e.dataTransfer.files];
+  if (state.busy) { toast('Masih memproses file sebelumnya, tunggu sampai selesai.'); return; }
+  if (!files.some((f) => /\.pdf$/i.test(f.name) || f.type === 'application/pdf')) { toast('Hanya file PDF yang bisa diproses.'); return; }
+  if (files.some((f) => !/\.pdf$/i.test(f.name) && f.type !== 'application/pdf')) toast('File non-PDF dilewati.');
+  handleFiles(files);
+});

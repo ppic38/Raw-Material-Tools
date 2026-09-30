@@ -19,9 +19,10 @@
         <input type="file" id="file" accept="application/pdf,.pdf" multiple hidden>
         <div class="tile" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+          <span class="hint">Tarik &amp; lepas PDF di sini</span>
         </div>
         <h2>Upload Invoice PDF</h2>
-        <p>Klik atau tarik file PDF ke sini. Boleh lebih dari satu invoice.</p>
+        <p>Atau klik untuk memilih file. Boleh lebih dari satu invoice.</p>
       </label>
 
       <div class="card" id="statusCard">
@@ -74,6 +75,15 @@
       </table>
     </details>
   </main>
+
+  <div class="overlay" id="dropOverlay" hidden aria-hidden="true">
+    <div class="overlay__box">
+      <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      <strong>Lepaskan PDF di sini</strong>
+      <span>Invoice akan langsung dibaca</span>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" hidden></div>
 
   <script src="vendor/tesseract/tesseract.min.js"></script>
   <script src="vendor/exceljs.min.js"></script>
